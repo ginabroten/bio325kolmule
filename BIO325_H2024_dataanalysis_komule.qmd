@@ -1,0 +1,302 @@
+---
+title: "BIO325_H2024_datanalysis_kolmule"
+format: html
+editor: visual
+---
+
+I utgangspunktet benytter vi oss kun av data fra årets tokt fra Nordsjøen (+ dataen som er implementert fra fjordtoktet i samme fil. )
+
+```{r}
+#| label: setup
+#| message: false
+#setup av pakker
+library("here") #setter working direktory til å være i rot-mappen og ikke i output
+library(tidyverse)
+library(readr)
+```
+
+```{r}
+#| label: import av data
+#| message: false
+
+
+import_NS <- read.csv(here("data", "BIO325_H2024_NS_catch_measurements.csv")) #import av all data
+
+#vi vil ha en fil som inneholder kun kolmule
+
+kolmule_import_ns <- import_NS |> 
+  filter(commonname == "kolmule") #kun kolmuledata
+
+kolmule_otlitter_ns <-kolmule_import_ns |> 
+  mutate(Oto_available = ifelse(!is.na(sex) & !is.na(maturationstage), "Yes", "No")) #dette dasettet inneholder antallet otolitter som er samlet inn på nordsjøtoket 2024
+
+library(readxl)
+
+
+BIO325_kolmule_otolitt_data <- read_excel(here("data", "BIO325_kolmule_otolitt_data.xlsx"))
+
+
+
+```
+
+```{r}
+#| label: historgram
+#| message: false
+
+#lager histogram for hele toktet
+ggplot(data = kolmule_import_ns, aes(x = length)) +
+  geom_histogram(binwidth = 0.005) +
+  geom_vline(xintercept = c(0.18, 0.26, 0.3, 0.33), color = "red", linetype = "dashed")+
+  
+  scale_color_binned()#legger til linjer som viser hvor vi syns toppene ligger
+```
+
+```{r}
+#| label: histogram som viser tilgjengelig otolitt eller ei
+#| message: false
+
+otolitt_hist <- ggplot(kolmule_otlitter_ns, aes(x = length, fill = Oto_available)) +
+  geom_histogram(binwidth = 0.005, color = "black") + 
+   geom_vline(xintercept = c(0.18, 0.26, 0.3, 0.33, 0.37), color = "red", linetype = "dashed")+
+  labs(title = "Kolmule length distribution")
+
+otolitt_hist
+
+```
+
+```{r}
+ggplot(data = BIO325_kolmule_otolitt_data, aes(x = otolitt_l_length_mm), rm.na = TRUE) +
+  geom_histogram(binwidth = 0.5, color = "black", fill = "blue")+
+  xlim(5, 15) +
+  theme_minimal()
+```
+
+```{r}
+#| label: fiskelengde mot otlittvekt
+#| message: false
+
+
+ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(otolitt_l_weight_mg) , color = as.factor(peak_nr))) +
+  geom_point() +
+  theme_minimal() +  
+  labs (title = "Log otolitt vekt (mg) vs log fiskelengde (m) ",
+        x = "Log fiskelengde (m)",
+        y = "Log otolittvekt (mg)",
+        color = "Peak-gruppe")
+  
+```
+
+```{r}
+#| label: otolittlengde mot fiskelengde
+#| message: false
+
+ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(otolitt_l_length_mm), color = as.factor(peak_nr))) + 
+  geom_point() +
+  theme_classic() +
+  labs (x = "Log fiskelengde (m)",
+        y = "Log otolittlengde (mm)",
+    title = "Log otolitt lengde (mm) vs log fiskelengde (m)",
+    color = "Peak-gruppe"
+        )
+
+
+```
+
+## Ananda sin kode - ikke ryddet
+
+
+
+```{r}
+
+H24_NS_relevantcols <- H24_north_sea |> 
+  select(dttm_start, dttm_stop, commonname, scientificname, sex, maturationstage, length, individualweight, fish_id, specimenid, catchsampleid, serialnumber, missionnumber, platform, missiontype, catchcategory, catchpartnumber, aphia, sampletype, catchweight, catchcount, lengthmeasurement, lengthsampleweight, lengthsamplecount, specimensamplecount, station, bottomdepthstart, bottomdepthstop, fishingdepthmax, fishingdepthmin, gearno, gear, vesselspeed, logstart, logstop, distance, wirelength, gear_type, gear_name, station_type, lat_start, lat_stop, lon_start, lon_stop, eye_dia_mm, pup_dia_mm, gape_size_mm, lengthresolution, individualproducttype, cond)
+
+H24_kolmule <- H24_NS_relevantcols |> 
+  filter(commonname == "kolmule")
+
+kolmule_har_otolitter <- H24_kolmule |>
+              mutate(Oto_available = ifelse(is.na(sex) & is.na(maturationstage),"No","Yes"))
+
+
+#View(kolmule_har_otolitter)
+
+
+```
+
+```{r}
+#| label: telle antall fisk det ble tatt otolitter på
+
+telle_ant_otolittpar <- kolmule_har_otolitter |> 
+  filter(Oto_available == "Yes")
+
+View(telle_ant_otolittpar)
+```
+
+```{r}
+#| label: histogram
+#| fig-height: 10
+#| fig-width: 10
+
+ggplot(H24_kolmule, aes(x = length)) +
+  geom_histogram(binwidth = 0.005, fill = "skyblue", color = "black") +  # Histogram with binwidth of 1
+  facet_wrap(~ dttm_start) +  # Facet by 'dttm_start'
+  labs(title = "Histogram of Length Faceted by dttm_start",
+       x = "Length",
+       y = "Count") +
+  theme_minimal()  # Use a clean theme
+
+
+```
+
+```{r}
+ggplot(H24_kolmule, aes(x = length)) +
+  geom_histogram(binwidth = 0.005, fill = "skyblue", color = "black") +  # Histogram with binwidth of 1
+  labs(title = "Histogram of Length",
+       x = "Length",
+       y = "Count") +
+  geom_vline(aes(xintercept = 0.18), color = "red", linetype = "dashed", size = 1)+
+  geom_vline(aes(xintercept = 0.26), color = "red", linetype = "dashed", size = 1)+
+  #geom_vline(aes(xintercept = 0.30), color = "red", linetype = "dashed", size = 1)+
+  geom_vline(aes(xintercept = 0.32), color = "red", linetype = "dashed", size = 1)+
+  geom_vline(aes(xintercept = 0.36), color = "red", linetype = "dashed", size = 1)+
+  theme_minimal()  # Use a clean theme
+```
+
+```{r}
+#| label: histogram med fisk m. otolitter og fisk u. otolitter
+
+otolitt_hist <- ggplot(kolmule_har_otolitter, aes(x = length, fill = Oto_available)) +
+  geom_histogram(binwidth = 0.005, color = "black") + # Adding histogram layer
+  labs(title = "Kolmule Length Distribution",
+       x = "Length",
+       y = "Count")
+
+#kolmule_import_ns
+
+otolitt_hist
+```
+
+```{r}
+#| label: histogram med fisk m. otolitter og fisk u. otolitter
+
+otolitt_hist <- ggplot(kolmule_har_otolitter, aes(x = length, fill = Oto_available)) +
+  geom_histogram(binwidth = 0.005)+#, color = "black") +
+  facet_wrap(~ dttm_start)+ # Adding histogram layer
+  labs(title = "Kolmule Length Distribution",
+       x = "Length",
+       y = "Count")
+
+#kolmule_import_ns
+
+otolitt_hist
+```
+
+
+
+```{r}
+#| label: randomly choose 30 otoliths from the first two peaks
+
+set.seed(60) #for reproducibility
+
+first_peak_data <- kolmule_har_otolitter |> 
+  filter(Oto_available == "Yes", length >= 0.155 & length <= 0.215)
+
+second_peak_data <- kolmule_har_otolitter |> 
+  filter(Oto_available == "Yes", length >= 0.22 & length <= 0.31)
+
+sampled_first_peak <- first_peak_data |> 
+  sample_n(30) |> 
+  mutate(peak_nr = "1")
+
+sampled_second_peak <- second_peak_data |> 
+  sample_n(30) |> 
+  mutate(peak_nr = "2")
+
+sampled_fish <- bind_rows(sampled_first_peak, sampled_second_peak) 
+
+View(sampled_fish)
+
+#sort by station for easier navigation when getting the otoliths. 
+sorted_sampled_fish <- sampled_fish |> 
+  arrange(station, specimenid, length) |> 
+  select (station, specimenid, length, peak_nr, serialnumber)
+
+
+########################
+######nå har jeg sortert etter stasjon for at vi lettere kan finne frem til riktig otolitt.##
+###### alle hauls vi hadde var fra ulike/unike stasjoner, sant???????########################
+######################################################################
+#unique(sampled_fish$station)
+
+
+#Spørsmål til Arild:
+#Ser med denne random samplingen at enkelte stasjoner blir overrepresentert. Hva har dette å si?
+#Lurer også på om det er greit å ta peaks sånn ca på øyemål, eller om det blir biased?
+#Hvor store intervaller per peak?
+
+#View(sorted_sampled_fish)
+
+```
+
+```{r}
+##filtrere på stasjon, kun for lettere oversikt eventuelt. 
+#station_474 <- sorted_sampled_fish |> 
+#  filter(station == 474)
+
+#View(station_474)
+```
+
+```{r}
+#| label: lese inn lengde og vektdata på otolitter
+
+otolith_weight_length <- read.xlsx(here("data/otolitt_data_til_R.xlsx"))
+
+View(otolith_weight_length)
+str(otolith_weight_length)
+
+```
+
+```{r}
+#| label: velge ut otolitter som skal aldersleses
+
+#Fra første peak
+five_min_first_peak <- otolith_weight_length |> 
+  filter(peak_nr == 1) |> 
+  arrange(otolitt_l_length_mm) |> 
+  drop_na(otolitt_l_length_mm) |> 
+  slice_head(n = 5)
+
+#View(five_min_first_peak)
+
+
+five_max_first_peak <- otolith_weight_length |> 
+  filter(peak_nr == 1) |> 
+  drop_na(otolitt_l_length_mm) |>
+  arrange(otolitt_l_length_mm) |> 
+  slice_tail(n = 5)
+
+#View(five_max_first_peak)
+
+
+#Fra andre peak
+ten_min_second_peak <- otolith_weight_length |> 
+  filter(peak_nr == 2) |> #Filter for second peak
+  drop_na(otolitt_l_length_mm) |>
+  arrange(otolitt_l_length_mm) |> # Sort by 'length' in ascending order
+  slice_head(n=10) # Select the first 10 rows
+
+View(ten_min_second_peak)
+
+
+ten_max_second_peak <- otolith_weight_length |> 
+  filter(peak_nr == 2) |> 
+  drop_na(otolitt_l_length_mm) |>
+  arrange(otolitt_l_length_mm) |> 
+  slice_tail(n=10) 
+
+View(ten_max_second_peak)
+
+```
+
+```{r}
+```
