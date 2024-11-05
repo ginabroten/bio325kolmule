@@ -13,6 +13,8 @@ I utgangspunktet benytter vi oss kun av data fra årets tokt fra Nordsjøen (+ d
 library("here") #setter working direktory til å være i rot-mappen og ikke i output
 library(tidyverse)
 library(readr)
+library(readxl)
+theme_set(theme_minimal)
 ```
 
 ```{r}
@@ -29,18 +31,20 @@ kolmule_import_ns <- import_NS |>
 
 kolmule_otlitter_ns <-kolmule_import_ns |> 
   mutate(Oto_available = ifelse(!is.na(sex) & !is.na(maturationstage), "Yes", "No")) #dette dasettet inneholder antallet otolitter som er samlet inn på nordsjøtoket 2024
+```
 
-library(readxl)
+```{r}
 
+BIO325_kolmule_otolitt_data <- read_excel("/Users/ginabroten/Documents/Master/h24/bio325/BIO325_H2024/BIO325_H2024_data_analysis/data/BIO325_kolmule_otolitt_data.xlsx", 
+                                          sheet = "import til r")
 
-BIO325_kolmule_otolitt_data <- read_excel(here("data", "BIO325_kolmule_otolitt_data.xlsx"))
-
+BIO325_kolmule_otolitt_data$fish_length <- as.numeric(BIO325_kolmule_otolitt_data$fish_length)
 
 
 ```
 
-
 ## Grafisk fremstilling
+
 ```{r}
 #| label: historgram med rød stiplet linje som viser de ulike peakene vi har valgt
 #| message: false
@@ -54,8 +58,7 @@ ggplot(kolmule_import_ns, aes(x = length)) +
   geom_vline(aes(xintercept = 0.26), color = "red", linetype = "dashed", size = 1)+
   #geom_vline(aes(xintercept = 0.30), color = "red", linetype = "dashed", size = 1)+
   geom_vline(aes(xintercept = 0.32), color = "red", linetype = "dashed", size = 1)+
-  geom_vline(aes(xintercept = 0.36), color = "red", linetype = "dashed", size = 1)+
-  theme_minimal()  # Use a clean theme
+  geom_vline(aes(xintercept = 0.36), color = "red", linetype = "dashed", size = 1)
 ```
 
 ```{r}
@@ -85,11 +88,8 @@ ggplot(kolmule_import_ns, aes(x = length)) +
   facet_wrap(~ dttm_start) +  # Facet by 'dttm_start'
   labs(title = "Histogram of Length Faceted by dttm_start",
        x = "Length",
-       y = "Count") +
-  theme_minimal()  # Use a clean theme
+       y = "Count") 
 ```
-
-
 
 ```{r}
 #| label: histogram med fisk m. otolitter og fisk u. otolitter per stasjon
@@ -101,18 +101,15 @@ otolitt_hist <- ggplot(kolmule_otlitter_ns, aes(x = length, fill = Oto_available
        x = "Length",
        y = "Count")
 
-
-
 otolitt_hist
 ```
 
 ```{r}
 #| label: historgam av otolitutvalg
 #| 
-ggplot(data = BIO325_kolmule_otolitt_data, aes(x = otolitt_l_length_mm), rm.na = TRUE) +
+ggplot(data = BIO325_kolmule_otolitt_data, aes(x = otolitt_l_length_mm), rm.na = TRUE, color = age) +
   geom_histogram(binwidth = 0.5, color = "black", fill = "blue")+
-  xlim(5, 15) +
-  theme_minimal()
+  xlim(5, 15) 
 ```
 
 ```{r}
@@ -122,7 +119,6 @@ ggplot(data = BIO325_kolmule_otolitt_data, aes(x = otolitt_l_length_mm), rm.na =
 
 ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(otolitt_l_weight_mg) , color = as.factor(peak_nr))) +
   geom_point() +
-  theme_minimal() +  
   labs (title = "Log otolitt vekt (mg) vs log fiskelengde (m) ",
         x = "Log fiskelengde (m)",
         y = "Log otolittvekt (mg)",
@@ -136,7 +132,6 @@ ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(oto
 
 ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(otolitt_l_length_mm), color = as.factor(peak_nr))) + 
   geom_point() +
-  theme_classic() +
   labs (x = "Log fiskelengde (m)",
         y = "Log otolittlengde (mm)",
     title = "Log otolitt lengde (mm) vs log fiskelengde (m)",
@@ -147,7 +142,8 @@ ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(oto
 ```
 
 
-## Utlvalg av otlolitter
+
+## Utlvalg av otlolitter til aldersavlesning
 
 ```{r}
 #| label: randomly choose 30 otoliths from the first two peaks
@@ -170,7 +166,6 @@ sampled_second_peak <- second_peak_data |>
 
 sampled_fish <- bind_rows(sampled_first_peak, sampled_second_peak) 
 
-View(sampled_fish)
 
 #sort by station for easier navigation when getting the otoliths. 
 sorted_sampled_fish <- sampled_fish |> 
@@ -202,7 +197,6 @@ sorted_sampled_fish <- sampled_fish |>
 #View(station_474)
 ```
 
-
 ```{r}
 #| label: velge ut otolitter som skal aldersleses
 
@@ -213,7 +207,6 @@ five_min_first_peak <- BIO325_kolmule_otolitt_data |>
   drop_na(otolitt_l_length_mm) |> 
   slice_head(n = 5)
 
-#View(five_min_first_peak)
 
 
 five_max_first_peak <- BIO325_kolmule_otolitt_data |> 
@@ -222,7 +215,7 @@ five_max_first_peak <- BIO325_kolmule_otolitt_data |>
   arrange(otolitt_l_length_mm) |> 
   slice_tail(n = 5)
 
-#View(five_max_first_peak)
+
 
 
 #Fra andre peak
@@ -232,7 +225,6 @@ ten_min_second_peak <- BIO325_kolmule_otolitt_data |>
   arrange(otolitt_l_length_mm) |> # Sort by 'length' in ascending order
   slice_head(n=10) # Select the first 10 rows
 
-View(ten_min_second_peak)
 
 
 ten_max_second_peak <- BIO325_kolmule_otolitt_data |> 
@@ -241,8 +233,50 @@ ten_max_second_peak <- BIO325_kolmule_otolitt_data |>
   arrange(otolitt_l_length_mm) |> 
   slice_tail(n=10) 
 
-View(ten_max_second_peak)
 
+```
+
+```{r}
+#| label: aldersdata plotting
+#| message: false
+
+BIO325_kolmule_otolitt_data_age <- BIO325_kolmule_otolitt_data |> 
+drop_na(age)
+
+ggplot(BIO325_kolmule_otolitt_data, aes(x = age, y = otolitt_l_length_mm , color = as.factor(peak_nr))) +
+geom_jitter() +
+labs(
+y = "Otolith length (mm)", x = "Age", color = "Peak group")
+```
+
+```{r}
+#| label: plotter otolitvekt mot aldersavelsning i kolmule
+#| message: false
+
+
+ggplot(BIO325_kolmule_otolitt_data, aes(x = age, y = otolitt_l_weight_mg , color = as.factor(peak_nr))) +
+geom_jitter() +
+labs(title = "Otolith weight (mg) vs age in Blue Whitting",
+y = "Otolith weight (mg)", x = "Age", color = "Peak group")
+```
+
+```{r}
+#| label: historgram av fordelinger av aldersgrupper mot peaknummer
+ggplot(BIO325_kolmule_otolitt_data, aes(x = age, fill = as.factor(peak_nr))) +
+geom_histogram()
+
+```
+
+
+```{r}
+#| label: log fiskelengde + log otolitgg lengde med farger som viser aldersfordeling og peaknummer
+#| message: false
+
+
+ggplot(data = BIO325_kolmule_otolitt_data_age, aes(x = log(fish_length), y = log(otolitt_l_length_mm), color = as.factor(age), shape = as.factor(peak_nr))) + 
+  geom_point() +
+  theme_classic() +
+  labs(shape = "Peak-nr", color = "Age", y = "Log ottolith length (mm)", x = "Log fish length (m)")
 ```
 
 
