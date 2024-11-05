@@ -14,7 +14,7 @@ library("here") #setter working direktory til å være i rot-mappen og ikke i ou
 library(tidyverse)
 library(readr)
 library(readxl)
-theme_set(theme_minimal)
+#theme_set(theme_minimal)
 ```
 
 ```{r}
@@ -35,8 +35,12 @@ kolmule_otlitter_ns <-kolmule_import_ns |>
 
 ```{r}
 
-BIO325_kolmule_otolitt_data <- read_excel("/Users/ginabroten/Documents/Master/h24/bio325/BIO325_H2024/BIO325_H2024_data_analysis/data/BIO325_kolmule_otolitt_data.xlsx", 
-                                          sheet = "import til r")
+
+library(here)
+
+BIO325_kolmule_otolitt_data <- read_excel(here("data", "BIO325_kolmule_otolitt_data.xlsx"), sheet = "import til r")
+
+
 
 BIO325_kolmule_otolitt_data$fish_length <- as.numeric(BIO325_kolmule_otolitt_data$fish_length)
 
@@ -45,21 +49,6 @@ BIO325_kolmule_otolitt_data$fish_length <- as.numeric(BIO325_kolmule_otolitt_dat
 
 ## Grafisk fremstilling
 
-```{r}
-#| label: historgram med rød stiplet linje som viser de ulike peakene vi har valgt
-#| message: false
-
-ggplot(kolmule_import_ns, aes(x = length)) +
-  geom_histogram(binwidth = 0.005, fill = "skyblue", color = "black") +  # Histogram with binwidth of 1
-  labs(title = "Histogram of Length",
-       x = "Length",
-       y = "Count") +
-  geom_vline(aes(xintercept = 0.18), color = "red", linetype = "dashed", size = 1)+
-  geom_vline(aes(xintercept = 0.26), color = "red", linetype = "dashed", size = 1)+
-  #geom_vline(aes(xintercept = 0.30), color = "red", linetype = "dashed", size = 1)+
-  geom_vline(aes(xintercept = 0.32), color = "red", linetype = "dashed", size = 1)+
-  geom_vline(aes(xintercept = 0.36), color = "red", linetype = "dashed", size = 1)
-```
 
 ```{r}
 #| label: histogram som viser tilgjengelig otolitt eller ei
