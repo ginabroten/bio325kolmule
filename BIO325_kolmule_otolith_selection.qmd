@@ -1,0 +1,101 @@
+---
+title: "BIO325_kolmule_otolith_selection"
+format: html
+editor: visual
+---
+
+
+```{r}
+#| label: packages
+library("here") #setter working direktory til å være i rot-mappen og ikke i output
+library(tidyverse)
+library(readr)
+library(readxl)
+library(viridis)
+```
+
+
+```{r}
+#| label: import av data
+#| message:false
+import_NS <- read.csv(here("data", "BIO325_H2024_NS_catch_measurements.csv")) #import av all data
+
+#vi vil ha en fil som inneholder kun kolmule
+
+kolmule_import_ns <- import_NS |> 
+  filter(commonname == "kolmule") #kun kolmuledata
+
+kolmule_otlitter_ns <-kolmule_import_ns |> 
+  mutate(Oto_available = ifelse(!is.na(sex) & !is.na(maturationstage), "Yes", "No")) #dette dasettet inneholder antallet otolitter som er samlet inn på nordsjøtoket 2024
+```
+
+```{r}
+#| label: randomly choose 30 otoliths from the first two peaks
+
+set.seed(60) #for reproducibility
+
+first_peak_data <- kolmule_otlitter_ns |> 
+  filter(Oto_available == "Yes", length >= 0.155 & length <= 0.215)
+
+second_peak_data <- kolmule_otlitter_ns |> 
+  filter(Oto_available == "Yes", length >= 0.22 & length <= 0.31)
+
+sampled_first_peak <- first_peak_data |> 
+  sample_n(30) |> 
+  mutate(peak_nr = "1")
+
+sampled_second_peak <- second_peak_data |> 
+  sample_n(30) |> 
+  mutate(peak_nr = "2")
+
+sampled_fish <- bind_rows(sampled_first_peak, sampled_second_peak) 
+
+
+#sort by station for easier navigation when getting the otoliths. 
+sorted_sampled_fish <- sampled_fish |> 
+  arrange(station, specimenid, length) |> 
+  select (station, specimenid, length, peak_nr, serialnumber)
+
+
+
+```
+
+
+```{r}
+#| label: velge ut otolitter som skal aldersleses
+#| message: false
+
+#From first peak
+five_min_first_peak <- BIO325_kolmule_otolitt_data |> 
+  filter(peak_nr == 1) |> 
+  arrange(otolitt_l_length_mm) |> 
+  drop_na(otolitt_l_length_mm) |> 
+  slice_head(n = 5)
+
+
+
+five_max_first_peak <- BIO325_kolmule_otolitt_data |> 
+  filter(peak_nr == 1) |> 
+  drop_na(otolitt_l_length_mm) |>
+  arrange(otolitt_l_length_mm) |> 
+  slice_tail(n = 5)
+
+
+
+#From second peak
+ten_min_second_peak <- BIO325_kolmule_otolitt_data |> 
+  filter(peak_nr == 2) |> #Filter for second peak
+  drop_na(otolitt_l_length_mm) |>
+  arrange(otolitt_l_length_mm) |> # Sort by 'length' in ascending order
+  slice_head(n=10) # Select the first 10 rows
+
+
+
+ten_max_second_peak <- BIO325_kolmule_otolitt_data |> 
+  filter(peak_nr == 2) |> 
+  drop_na(otolitt_l_length_mm) |>
+  arrange(otolitt_l_length_mm) |> 
+  slice_tail(n=10) 
+
+```
+
