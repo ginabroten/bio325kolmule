@@ -31,20 +31,29 @@ kolmule_import_ns <- import_NS |>
   filter(commonname == "kolmule") #only kolmule
 
 kolmule_otolitter_ns <-kolmule_import_ns |> 
-  mutate(Oto_available = ifelse(!is.na(sex) & !is.na(maturationstage), "Yes", "No")) #this dataframe will show the number of fish with otoliths, due to us only collecting otoliths & sexing the first 30
+  mutate(Oto_available = ifelse(!is.na(sex) & !is.na(maturationstage), "Yes", "No"),
+    length = as.numeric(length),    #as factor      
+    fish_length_cm = length * 100      #converting to cm    
+  ) #this dataframe will show the number of fish with otoliths, due to us only collecting otoliths & sexing the first 30, plus converting the length to cm
 
-kolmule_otolitt_agedata <- read_excel(here("data", "BIO325_kolmule_otolitt_data.xlsx"), sheet = "first_agereading") #import of the age-readings
 
-kolmule_otolitt_agedata$fish_length <- as.numeric(kolmule_otolitt_agedata$fish_length) #setting them as numbers
+#import of the data from the age reading of the otoliths
 
-#after doing a first age reading, we decided to do a supplimentary agereading on the first peak
-kolmule_second_agereading_import <- read_excel(
-  here("data/BIO325_kolmule_otolitt_data.xlsx"), 
-  sheet = "second_agereading", 
-  col_types = "guess"
-)
-kolmule_second_agereading <- kolmule_second_agereading_import |> 
-  mutate(midpeak1 = ifelse(Otolitt_nr %in% c(55, 51, 12, 54, 52), "Second", "First")) #creating new colums that displays if the otoliths were a part of the first or second age-reading
+kolmule_otolitt_agedata <- read_excel(here("data", "BIO325_kolmule_otolitt_data.xlsx"), sheet = "first_agereading") |> #import
+  mutate(
+    fish_length = as.numeric(fish_length),    #as factor      
+    fish_length_cm = fish_length * 100          #converting to cm    
+  )
+
+#after doing a first age reading, we decided to do a supplimentary agereading on the first peak, importing this dataset here; 
+
+kolmule_second_agereading <- read_excel(
+  here("data/BIO325_kolmule_otolitt_data.xlsx"), sheet = "second_agereading", col_types = "guess") |>  #import
+  mutate(midpeak1 = ifelse(Otolitt_nr %in% c(55, 51, 12, 54, 52), "Second", "First"),
+         stasjon = as.numeric(stasjon),
+         location = ifelse(stasjon %in% c(488, 489, 490), "West", "East"))
+  #creating new colums that displays if the otoliths were a part of the first or second age-reading, and the location of the trawling stations in a separate column
+
 
 ```
 
@@ -57,29 +66,28 @@ kolmule_second_agereading <- kolmule_second_agereading_import |>
 
 #from looking at the disturbuted data, two peaks were decided to be utlizied to group the data furtheron - here marked by the red dashed line. 
 
-otolitt_hist <- ggplot(kolmule_otolitter_ns, aes(x = length)) +
-  geom_histogram(binwidth = 0.005, color = "black", fill = "dodgerblue") + 
-   geom_vline(aes(xintercept = 0.155), color = "red", linetype = "dashed", size = 1)+ #start of first peak
-  geom_vline(aes(xintercept = 0.215), color = "red", linetype = "dashed", size = 1)+ #end of first peak
-  geom_vline(aes(xintercept = 0.22), color = "red", linetype = "dashed", size = 1)+ #start of second peak
-  geom_vline(aes(xintercept = 0.31), color = "red", linetype = "dashed", size = 1) +
-  labs(x = "Fish length [m]",
+otolitt_hist <- ggplot(kolmule_otolitter_ns, aes(x = fish_length_cm)) +
+  geom_histogram(binwidth = 0.5, color = "black", fill = "dodgerblue") + 
+   geom_vline(aes(xintercept = 15.5), color = "red", linetype = "dashed", size = 1)+ #start of first peak
+  geom_vline(aes(xintercept = 21.5), color = "red", linetype = "dashed", size = 1)+ #end of first peak
+  geom_vline(aes(xintercept = 22), color = "red", linetype = "dashed", size = 1)+ #start of second peak
+  geom_vline(aes(xintercept = 31), color = "red", linetype = "dashed", size = 1) +
+  labs(x = "Fish length [cm]",
        y = "Count")
 
 otolitt_hist
 
 ```
 
-
 ```{r}
 #| label: fiskelengde mot otlittvekt
 #| message: false
 
 #creating a plot displaying the relationship beteween fish length and otlith weigth 
-kolmule_otovekt_fisklengde <- ggplot(data = kolmule_otolitt_agedata, aes(x = log(fish_length), y = log(otolitt_l_weight_mg) , color = as.factor(peak_nr))) + #using log scale to better visualise the realtionship
+kolmule_otovekt_fisklengde <- ggplot(data = kolmule_otolitt_agedata, aes(x = log(fish_length_cm), y = log(otolitt_l_weight_mg) , color = as.factor(peak_nr))) + #using log scale to better visualise the realtionship
   geom_point() +
   labs (title = "A",
-        x = "log(Fish Length [m])",
+        x = "log(Fish Length [cm])",
         y = "log(Otolith Weight [mg])",
         color = "Peak number")+
     guides(color = "none") +
@@ -92,10 +100,10 @@ kolmule_otovekt_fisklengde <- ggplot(data = kolmule_otolitt_agedata, aes(x = log
 #| message: false
 
 #plotting the fish length against the otolith length, here also in the log scale
-kolmule_fisklengde_otolengde <- ggplot(data = kolmule_otolitt_agedata, aes(x = log(fish_length), y = log(otolitt_l_length_mm), color = as.factor(peak_nr))) + 
+kolmule_fisklengde_otolengde <- ggplot(data = kolmule_otolitt_agedata, aes(x = log(fish_length_cm), y = log(otolitt_l_length_mm), color = as.factor(peak_nr))) + 
   geom_point() +
   labs (title  = "B",
-    x = "log(Fish Length [m])",
+    x = "log(Fish Length [cm])",
         y = "log(Otolith Length [mm])",
     color = "Peak number"
         ) +
@@ -113,9 +121,6 @@ kolmule_otovekt_fisklengde + kolmule_fisklengde_otolengde
 
 
 ```
-
-
-
 
 ```{r}
 #| label: agereading plots sorted by age
@@ -138,13 +143,22 @@ kolmule_alder_otolengde
 ```
 
 
+```{r}
+#| label: plotting to check if the fish was from the eastern or western part of the trawling stations
+#| message: false
+
+kolmule_east_west <- ggplot(data = kolmule_second_agereading) +
+  geom_jitter(aes(x = age, y = otolitt_l_length_mm, color = as.factor(peak_nr), shape = location),
+              position = position_jitter(width = 0.12, height = 0.0), size = 2.5, alpha = 0.7) +
+  labs(x = "Age",
+       y = "Otolith Length [mm]",
+       colour = "Peak number",
+       shape = "Location") +
+  scale_color_manual(values = c("1" = "darkmagenta", "2" = "thistle3")) +
+  scale_shape_manual(values = c("East" = 16, "West" = 15)) + 
+  theme_minimal()
 
 
-
-
-
-
-
-
-
+kolmule_east_west
+```
 
