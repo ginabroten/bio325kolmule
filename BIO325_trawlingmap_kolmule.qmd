@@ -1,0 +1,61 @@
+---
+title: "Map of trawling stations in the BIO325 H2024 cruise"
+format: html
+editor: visual
+---
+
+```{r}
+#| label: setup and packages
+#| message: false
+#| warning: false
+
+library(tidyverse)
+library(here)
+library(sf)
+library(ggOceanMaps)
+
+```
+
+```{r}
+#| label: import
+#| message: false
+import_NS <- read.csv(here("data", "BIO325_H2024_NS_catch_measurements.csv")) #import of all data
+
+#want a data frame with only blue whtiing/kolmule
+kolmule_import_ns <- import_NS |> 
+  filter(commonname == "kolmule") #only kolmule
+
+```
+
+```{r}
+#| label: load-activity-files and creating map over trawlingstations
+
+activity_files <- list.files(here::here("data"), full.names = T) |> 
+  str_subset("activity")
+
+activity_log <- activity_files |> 
+ map_df(~ read_csv(., col_types = cols(datetime = col_character()),
+ show_col_types = F, locale = locale(encoding = "latin1")))
+
+
+our_stations <- kolmule_import_ns |> 
+  select("serial_no" = "serialnumber") 
+
+
+activity_log_sf <- activity_log |> 
+  st_as_sf(coords = c("lon", "lat"), crs = 4326) |> 
+  filter(station_type == "Bottom trawl start") |>
+  mutate(year= year(datetime)) |> 
+  filter(year == 2024) |> 
+  filter(serial_no %in% our_stations$serial_no)
+
+#total map with the trawlingstations
+kart <- basemap(limits = c(-6, 7, 58, 64), bathymetry = TRUE) + 
+  geom_sf(data = activity_log_sf, 
+          aes(colour = "red"), size = 2.5, alpha = 0.5) +
+  scale_colour_manual(values = "red", guide = "none") +
+  labs(x = "Longitude",
+       y = "Latitude") 
+  
+kart
+```

@@ -4,87 +4,70 @@ format: html
 editor: visual
 ---
 
-I utgangspunktet benytter vi oss kun av data fra årets tokt fra Nordsjøen (+ dataen som er implementert fra fjordtoktet i samme fil. )
-
 ```{r}
 #| label: setup
 #| message: false
-#setup av pakker
-library("here") #setter working direktory til å være i rot-mappen og ikke i output
+
+library("here") #setting working diectory
 library(tidyverse)
 library(readr)
 library(readxl)
 library(viridis)
-#theme_set(theme_minimal)
+library(patchwork)
 
-colors = viridis(3)
+theme_set(theme_minimal())
 ```
 
 ```{r}
-#| label: import av data
+#| label: import and tidying of input dat
 #| message: false
 
 
-import_NS <- read.csv(here("data", "BIO325_H2024_NS_catch_measurements.csv")) #import av all data
+import_NS <- read.csv(here("data", "BIO325_H2024_NS_catch_measurements.csv")) #import of all data
 
-#vi vil ha en fil som inneholder kun kolmule
+#want a data frame with only blue whtiing/kolmule
 
 kolmule_import_ns <- import_NS |> 
-  filter(commonname == "kolmule") #kun kolmuledata
+  filter(commonname == "kolmule") #only kolmule
 
-kolmule_otlitter_ns <-kolmule_import_ns |> 
-  mutate(Oto_available = ifelse(!is.na(sex) & !is.na(maturationstage), "Yes", "No")) #dette dasettet inneholder antallet otolitter som er samlet inn på nordsjøtoket 2024
+kolmule_otolitter_ns <-kolmule_import_ns |> 
+  mutate(Oto_available = ifelse(!is.na(sex) & !is.na(maturationstage), "Yes", "No")) #this dataframe will show the number of fish with otoliths, due to us only collecting otoliths & sexing the first 30
 
-BIO325_kolmule_otolitt_data <- read_excel(here("data", "BIO325_kolmule_otolitt_data.xlsx"), sheet = "import til r")
+kolmule_otolitt_agedata <- read_excel(here("data", "BIO325_kolmule_otolitt_data.xlsx"), sheet = "first_agereading") #import of the age-readings
 
+kolmule_otolitt_agedata$fish_length <- as.numeric(kolmule_otolitt_agedata$fish_length) #setting them as numbers
 
+#after doing a first age reading, we decided to do a supplimentary agereading on the first peak
+kolmule_second_agereading_import <- read_excel(
+  here("data/BIO325_kolmule_otolitt_data.xlsx"), 
+  sheet = "second_agereading", 
+  col_types = "guess"
+)
+kolmule_second_agereading <- kolmule_second_agereading_import |> 
+  mutate(midpeak1 = ifelse(Otolitt_nr %in% c(55, 51, 12, 54, 52), "Second", "First")) #creating new colums that displays if the otoliths were a part of the first or second age-reading
 
-BIO325_kolmule_otolitt_data$fish_length <- as.numeric(BIO325_kolmule_otolitt_data$fish_length)
 ```
 
-
-## Grafisk fremstilling
+## Graphical exploration of the data
 
 ```{r}
-#| label: histogram som viser tilgjengelig otolitt eller ei
+#| label: histogram of fish length
 #| message: false
+#| warning: false
 
-available_otolitt_hist <- ggplot(kolmule_otlitter_ns, aes(x = length, fill = Oto_available)) +
-  geom_histogram(binwidth = 0.005, color = "black") + 
+#from looking at the disturbuted data, two peaks were decided to be utlizied to group the data furtheron - here marked by the red dashed line. 
+
+otolitt_hist <- ggplot(kolmule_otolitter_ns, aes(x = length)) +
+  geom_histogram(binwidth = 0.005, color = "black", fill = "dodgerblue") + 
    geom_vline(aes(xintercept = 0.155), color = "red", linetype = "dashed", size = 1)+ #start of first peak
   geom_vline(aes(xintercept = 0.215), color = "red", linetype = "dashed", size = 1)+ #end of first peak
   geom_vline(aes(xintercept = 0.22), color = "red", linetype = "dashed", size = 1)+ #start of second peak
   geom_vline(aes(xintercept = 0.31), color = "red", linetype = "dashed", size = 1) +
-  scale_fill_viridis_d()
-
-available_otolitt_hist
-
-```
-
-```{r}
-#| label: histogram av som viser datofordeling
-#| fig-height: 10
-#| fig-width: 10
-
-ggplot(kolmule_import_ns, aes(x = length)) +
-  geom_histogram(binwidth = 0.005, fill = "skyblue", color = "black") + 
-  facet_wrap(~ dttm_start) +  
-  labs(title = "Histogram of Length Faceted by dttm_start",
-       x = "Length",
-       y = "Count") 
-```
-
-```{r}
-#| label: histogram med fisk m. otolitter og fisk u. otolitter per stasjon
-
-otolitt_hist <- ggplot(kolmule_otlitter_ns, aes(x = length, fill = Oto_available)) +
-  geom_histogram(binwidth = 0.005)+#, color = "black") +
-  facet_wrap(~ dttm_start)+ # Adding histogram layer
-  labs(title = "Kolmule Length Distribution",
-       x = "Length",
+  labs(x = "Fish length [m]",
        y = "Count")
 
 otolitt_hist
+
 ```
 
 
@@ -92,14 +75,15 @@ otolitt_hist
 #| label: fiskelengde mot otlittvekt
 #| message: false
 
-
-ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(otolitt_l_weight_mg) , color = as.factor(peak_nr))) +
+#creating a plot displaying the relationship beteween fish length and otlith weigth 
+kolmule_otovekt_fisklengde <- ggplot(data = kolmule_otolitt_agedata, aes(x = log(fish_length), y = log(otolitt_l_weight_mg) , color = as.factor(peak_nr))) + #using log scale to better visualise the realtionship
   geom_point() +
-  labs (title = "Log otolitt vekt (mg) vs log fiskelengde (m) ",
-        x = "Log fiskelengde (m)",
-        y = "Log otolittvekt (mg)",
-        color = "Peak-gruppe")+
-  scale_color_viridis_d()
+  labs (title = "A",
+        x = "log(Fish Length [m])",
+        y = "log(Otolith Weight [mg])",
+        color = "Peak number")+
+    guides(color = "none") +
+  scale_color_manual(values = c("1" = "dodgerblue4", "2" = "lightskyblue"))
   
 ```
 
@@ -107,14 +91,25 @@ ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(oto
 #| label: otolittlengde mot fiskelengde
 #| message: false
 
-ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(otolitt_l_length_mm), color = as.factor(peak_nr))) + 
+#plotting the fish length against the otolith length, here also in the log scale
+kolmule_fisklengde_otolengde <- ggplot(data = kolmule_otolitt_agedata, aes(x = log(fish_length), y = log(otolitt_l_length_mm), color = as.factor(peak_nr))) + 
   geom_point() +
-  labs (x = "Log fiskelengde (m)",
-        y = "Log otolittlengde (mm)",
-    title = "Log otolitt lengde (mm) vs log fiskelengde (m)",
-    color = "Peak-gruppe"
-        )+
-  scale_color_viridis_d()
+  labs (title  = "B",
+    x = "log(Fish Length [m])",
+        y = "log(Otolith Length [mm])",
+    color = "Peak number"
+        ) +
+   scale_color_manual(values = c("1" = "dodgerblue4", "2" = "lightskyblue"))
+
+```
+
+```{r}
+#| label: plotting both plots together with the framework package
+#| message: false
+#| warning: false
+
+
+kolmule_otovekt_fisklengde + kolmule_fisklengde_otolengde
 
 
 ```
@@ -123,51 +118,33 @@ ggplot(data = BIO325_kolmule_otolitt_data, aes(x = log(fish_length), y = log(oto
 
 
 ```{r}
-#| label: aldersdata plotting
+#| label: agereading plots sorted by age
 #| message: false
+#| warning: false
 
-BIO325_kolmule_otolitt_data_age <- BIO325_kolmule_otolitt_data |> 
-drop_na(age)
+#creating a plot that displays the different age-groups, and the color shows what peak they belong to, alongside the shape that entails what part of the age reading they belong to
 
-ggplot(BIO325_kolmule_otolitt_data, aes(x = age, y = otolitt_l_length_mm , color = as.factor(peak_nr))) +
-geom_point() +
-labs(
-y = "Otolith length (mm)", x = "Age", color = "Peak group")+
-  scale_color_viridis_d()
-```
-
-```{r}
-#| label: plotter otolitvekt mot aldersavelsning i kolmule
-#| message: false
+kolmule_alder_otolengde <- ggplot(data=kolmule_second_agereading) + 
+  geom_point(aes(x = age , y = otolitt_l_length_mm, color = as.factor(peak_nr), shape=midpeak1), size = 2.5,alpha = 0.7) +
+  labs(x = "Age",
+       y = "Otolith Length [mm]",
+       colour = "Peak number",
+       shape = "Age reading") +
+  scale_color_manual(values = c("1" = "dodgerblue4", "2" = "lightskyblue")) 
 
 
-ggplot(BIO325_kolmule_otolitt_data, aes(x = age, y = otolitt_l_weight_mg , color = as.factor(peak_nr))) +
-geom_point() +
-labs(title = "Otolith weight (mg) vs age in Blue Whitting",
-y = "Otolith weight (mg)", x = "Age", color = "Peak group")+
-  scale_color_viridis_d()
+
+kolmule_alder_otolengde
 ```
 
 
-```{r}
-#| label: log fiskelengde + log otolitt vekt med farger som viser aldersfordeling og peaknummer
-#| message: false
-
-ggplot(data = BIO325_kolmule_otolitt_data_age, aes(x = log(fish_length), y = log(otolitt_l_weight_mg), color = as.factor(age), shape = as.factor(peak_nr))) + 
-  geom_point() +
-  scale_color_viridis_d() +
-  labs(shape = "Peak-nr", color = "Age", y = "Log ottolith weight (mg)", x = "Log fish length (m)")+
-  scale_color_viridis_d()
-```
-
-```{r}
-#| label: log fiskelengde + log otolitt lengde med farger som viser aldersfordeling og peaknummer
-#| message: false
 
 
-ggplot(data = BIO325_kolmule_otolitt_data_age, aes(x = log(fish_length), y = log(otolitt_l_length_mm), color = as.factor(age), shape = as.factor(peak_nr))) + 
-  geom_point() +
-  theme_classic() +
-  labs(shape = "Peak-nr", color = "Age", y = "Log ottolith weight (mg)", x = "Log fish length (m)") +
-  scale_color_viridis_d()
-```
+
+
+
+
+
+
+
+
